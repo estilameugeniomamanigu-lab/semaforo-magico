@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1478c8">
+<title>El semáforo mágico con voz</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(#bdeaff,#fff4c6);color:#243746;text-align:center}
+main{max-width:720px;margin:auto;padding:15px}
+h1{font-size:clamp(2rem,7vw,3rem);color:#174a78;margin:8px 0}
+p{font-size:1.1rem;line-height:1.45}
+.card{background:white;border-radius:24px;padding:18px;margin:14px 0;box-shadow:0 6px 0 #b4d9e8}
+.voice{width:100%;background:#1769aa;color:white;border:0;border-radius:18px;padding:17px 12px;font-size:1.18rem;font-weight:bold;cursor:pointer}
+.traffic{width:104px;margin:13px auto;background:#30343b;border:5px solid #202328;border-radius:27px;padding:8px}
+.light{width:64px;height:64px;border-radius:50%;margin:7px auto;opacity:.3;border:3px solid #151515}
+.red{background:#ff4545}.yellow{background:#ffd43b}.green{background:#31d875}
+.light.active{opacity:1;box-shadow:0 0 13px currentColor}
+.question{font-size:clamp(1.35rem,5vw,1.85rem);font-weight:bold;line-height:1.35;margin:15px 0}
+.answers{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.answer{min-height:72px;border:3px solid transparent;border-radius:18px;padding:10px 5px;font-size:1.05rem;font-weight:bold;cursor:pointer}
+.answer span{display:block;font-size:2rem;margin-bottom:4px}
+.r{background:#ffdfdf;border-color:#ff9898}.y{background:#fff1b5;border-color:#f0d45a}.g{background:#d9ffe7;border-color:#76d99a}
+#feedback{min-height:55px;padding:12px;border-radius:15px;background:#eef7ff;font-size:1.05rem;font-weight:bold;line-height:1.4;margin-top:14px}
+#feedback.good{background:#d9ffe7;color:#126335}#feedback.try{background:#fff0d3;color:#774600}
+.next{width:100%;border:0;border-radius:16px;padding:15px;margin-top:12px;background:#1769aa;color:white;font-size:1.1rem;font-weight:bold;cursor:pointer}
+.hidden{display:none!important}.small{font-size:.95rem}
+@media(max-width:380px){.answer{font-size:.92rem}.answer span{font-size:1.7rem}.answers{gap:5px}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<div style="font-size:2.8rem">🚦👧🧒</div>
+<h1>El semáforo mágico</h1>
+<p>¡Escucha, mira y juega!</p>
+</header>
+<section class="card" id="game">
+<button class="voice" id="listen" onclick="speakQuestion()">🔊 ESCUCHAR LA PREGUNTA</button>
+<div class="traffic" aria-label="Dibujo de un semáforo">
+<div class="light red" id="red"></div><div class="light yellow" id="yellow"></div><div class="light green" id="green"></div>
+</div>
+<p><b>⭐ Puntos: <span id="score">0</span></b></p>
+<div class="question" id="question">¿Qué color significa alto?</div>
+<p class="small">Toca el botón del color que escuchaste.</p>
+<div class="answers" id="answers">
+<button class="answer r" onclick="choose('rojo')"><span>🔴</span>Rojo</button>
+<button class="answer y" onclick="choose('amarillo')"><span>🟡</span>Amarillo</button>
+<button class="answer g" onclick="choose('verde')"><span>🟢</span>Verde</button>
+</div>
+<div id="feedback" role="status" aria-live="polite">Primero toca “Escuchar la pregunta”.</div>
+<button class="next hidden" id="next" onclick="nextQuestion()">➡️ SIGUIENTE</button>
+<button class="next hidden" id="again" onclick="restart()">🔄 JUGAR OTRA VEZ</button>
+</section>
+<section class="card small">👨‍👩‍👧‍👦 <b>Para las familias:</b> ayuden al niño a tocar el botón azul para escuchar. Después, el pequeño puede responder tocando el círculo de color. ¡No necesita saber leer!</section>
+<p class="small">🚸 Recuerda: cruza por el paso peatonal, mira a ambos lados y acompáñate de una persona adulta.</p>
+</main>
+<script>
+const qs=[
+ {q:"¿Qué color significa ALTO?",a:"rojo",light:"red",msg:"¡Muy bien! El rojo significa alto."},
+ {q:"¿Qué color es como el sol?",a:"amarillo",light:"yellow",msg:"¡Correcto! El amarillo nos pide tener cuidado."},
+ {q:"¿Qué color significa AVANZAR cuando es seguro?",a:"verde",light:"green",msg:"¡Muy bien! El verde indica avanzar cuando sea seguro."},
+ {q:"¿Qué color vemos arriba del semáforo?",a:"rojo",light:"red",msg:"¡Sí! Arriba está la luz roja."},
+ {q:"¿Qué color nos pide tener cuidado?",a:"amarillo",light:"yellow",msg:"¡Excelente! El amarillo significa precaución."}
+];
+let i=0,score=0,done=false;
+function setLight(c){["red","yellow","green"].forEach(x=>document.getElementById(x).classList.toggle("active",x===c))}
+function speak(text){
+ if(!("speechSynthesis" in window)){document.getElementById("feedback").textContent="Este navegador no tiene voz disponible. Pide a una persona adulta que lea la pregunta.";return}
+ window.speechSynthesis.cancel();
+ const u=new SpeechSynthesisUtterance(text);u.lang="es-BO";u.rate=.82;u.pitch=1.08;
+ const voices=window.speechSynthesis.getVoices();const v=voices.find(x=>x.lang.toLowerCase().startsWith("es-bo"))||voices.find(x=>x.lang.toLowerCase().startsWith("es"));if(v)u.voice=v;
+ window.speechSynthesis.speak(u);
+}
+function speakQuestion(){speak(qs[i].q)}
+function choose(a){
+ if(done)return;done=true;const q=qs[i],f=document.getElementById("feedback");
+ if(a===q.a){score++;document.getElementById("score").textContent=score;f.className="good";f.textContent="🌟 "+q.msg;speak(q.msg)}
+ else{f.className="try";f.textContent="😊 ¡Vamos a escuchar otra vez!";speak("Inténtalo otra vez. Escucha la pregunta de nuevo.");done=false;return}
+ document.getElementById("next").classList.toggle("hidden",i===qs.length-1);
+ document.getElementById("again").classList.toggle("hidden",i!==qs.length-1);
+ if(i===qs.length-1){document.getElementById("question").textContent="¡Terminaste!";document.getElementById("answers").classList.add("hidden");f.textContent="¡Felicitaciones! Lograste "+score+" puntos. ¡Muy bien!";speak("¡Felicitaciones! Terminaste el juego.");}
+}
+function nextQuestion(){
+ if(!done)return;i++;done=false;const q=qs[i];
+ document.getElementById("question").textContent=q.q;document.getElementById("feedback").className="";document.getElementById("feedback").textContent="Toca escuchar la pregunta.";document.getElementById("next").classList.add("hidden");document.getElementById("again").classList.add("hidden");setLight(q.light);speakQuestion();
+}
+function restart(){
+ i=0;score=0;done=false;document.getElementById("score").textContent="0";document.getElementById("question").textContent=qs[0].q;document.getElementById("answers").classList.remove("hidden");document.getElementById("feedback").className="";document.getElementById("feedback").textContent="Toca escuchar la pregunta.";document.getElementById("again").classList.add("hidden");setLight(qs[0].light);speakQuestion();
+}
+setLight(qs[0].light);
+</script>
+</body>
+</html>
